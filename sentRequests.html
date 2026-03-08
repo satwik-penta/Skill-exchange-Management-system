@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Sent Requests</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+*{
+box-sizing:border-box;
+font-family:'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body{
+margin:0;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+min-height:100vh;
+position:relative;
+overflow-x:hidden;
+overflow-y:auto;
+}
+
+body::before{
+content:'';
+position:absolute;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="50" r="1.5" fill="rgba(255,255,255,0.1)"/></svg>');
+background-size:200px 200px;
+animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float{
+0%,100%{transform:translateY(0px);}
+50%{transform:translateY(-10px);}
+}
+
+header{
+background: rgba(255,255,255,0.95);
+backdrop-filter: blur(20px);
+padding:20px;
+box-shadow:0 8px 32px rgba(0,0,0,0.1);
+display:flex;
+justify-content:space-between;
+align-items:center;
+border-bottom:1px solid rgba(255,255,255,0.2);
+position:relative;
+z-index:10;
+}
+
+h1{
+color:#1e3a8a;
+background: linear-gradient(45deg, #1e3a8a, #3b82f6);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+font-weight:700;
+}
+
+.container{
+max-width:1100px;
+margin:40px auto;
+padding:20px;
+position:relative;
+z-index:5;
+}
+
+.requests{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(350px,1fr));
+gap:25px;
+}
+
+.request-card{
+background: rgba(255,255,255,0.95);
+backdrop-filter: blur(20px);
+padding:30px;
+border-radius:20px;
+box-shadow:0 15px 40px rgba(0,0,0,0.15);
+transition: all 0.3s ease;
+border:1px solid rgba(255,255,255,0.2);
+position:relative;
+overflow:hidden;
+}
+
+.request-card::before{
+content:'';
+position:absolute;
+top:0;
+left:-100%;
+width:100%;
+height:100%;
+background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+transition: left 0.6s;
+}
+
+.request-card:hover::before{
+left:100%;
+}
+
+.request-card:hover{
+transform:translateY(-5px);
+box-shadow:0 20px 50px rgba(0,0,0,0.2);
+}
+
+.request-card h3{
+margin-top:0;
+color:#1e3a8a;
+font-size:20px;
+font-weight:600;
+}
+
+.skill-tag{
+background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+color:white;
+padding:6px 14px;
+border-radius:20px;
+display:inline-block;
+font-size:14px;
+font-weight:500;
+margin:5px 0;
+}
+
+.status{
+font-weight:bold;
+font-size:16px;
+padding:8px 16px;
+border-radius:20px;
+display:inline-block;
+margin:10px 0;
+}
+
+.status.pending{
+color:#f59e0b;
+background: rgba(245,158,11,0.1);
+}
+
+.status.accepted{
+color:#10b981;
+background: rgba(16,185,129,0.1);
+}
+
+.status.rejected{
+color:#ef4444;
+background: rgba(239,68,68,0.1);
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<h1>Sent Requests</h1>
+
+<button onclick="goDashboard()">Dashboard</button>
+
+</header>
+
+<div class="container">
+
+<h2 style="color:white;">Your Sent Requests</h2>
+
+<div id="requestsList" class="requests"></div>
+
+</div>
+
+<script>
+
+const API = "http://localhost:5000/api/users";
+
+async function loadRequests(){
+
+const email = localStorage.getItem('userEmail');
+
+if(!email){
+
+alert('Please login first');
+window.location='index.html';
+return;
+
+}
+
+try{
+
+const res = await fetch(`${API}/exchange-request-sent/${email}`);
+
+const requests = await res.json();
+
+const list = document.getElementById('requestsList');
+
+list.innerHTML = '';
+
+if(!requests || requests.length === 0){
+
+list.innerHTML = '<p style="color:white;">No sent requests.</p>';
+return;
+
+}
+
+requests.forEach(r => {
+
+list.innerHTML += `
+
+<div class="request-card">
+
+<h3>To: ${r.toEmail}</h3>
+
+<p><b>Skill Requested:</b> <span class="skill-tag">${r.skill}</span></p>
+
+<p class="status ${r.status}"><b>Status:</b> ${r.status}</p>
+
+<p><b>Sent:</b> ${new Date(r.createdAt).toLocaleDateString()}</p>
+
+</div>
+
+`;
+
+});
+
+}catch(err){
+
+console.error(err);
+alert("Error loading requests");
+
+}
+
+}
+
+function goDashboard(){
+
+window.location="dashboard.html";
+
+}
+
+loadRequests();
+
+</script>
+
+</body>
+</html>

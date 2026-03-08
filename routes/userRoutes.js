@@ -1,0 +1,619 @@
+const express = require('express');
+const router = express.Router();
+const path = require('path');
+const multer = require('multer');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
+const db = require('../db');
+
+// Email transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+/* GET CURRENT USER */
+router.get('/me', (req, res) => {
+  if (req.user) {
+    res.json(req.user);
+  } else {
+    res.status(401).json({ message: 'Not authenticated' });
+  }
+});
+
+/* Ensure uploads folder exists */
+
+const uploadDir = path.join(__dirname, '../uploads');
+
+/* MULTER CONFIG */
+
+const storage = multer.diskStorage({
+
+destination:(req,file,cb)=>{
+cb(null,uploadDir);
+},
+
+filename:(req,file,cb)=>{
+
+const unique = Date.now() + '-' + Math.round(Math.random()*1E9);
+const ext = path.extname(file.originalname);
+
+cb(null, file.fieldname + '-' + unique + ext);
+
+}
+
+});
+
+const fileFilter = (req,file,cb)=>{
+
+const allowed = ['image/png','image/jpeg','image/jpg','image/webp'];
+
+if(allowed.includes(file.mimetype)){
+cb(null,true);
+}else{
+cb(new Error("Only image files allowed"));
+}
+
+};
+
+const upload = multer({
+storage,
+fileFilter,
+limits:{fileSize:5*1024*1024}
+});
+
+/* GET USERS */
+
+router.get('/',(req,res)=>{
+
+const { skill, experience, qualification } = req.query;
+
+let query = `SELECT DISTINCT users.*
+FROM users
+LEFT JOIN skills ON users.id = skills.userId`;
+
+let params = [];
+let conditions = [];
+
+if(skill){
+  conditions.push("skills.skillName LIKE ?");
+  params.push(`%${skill}%`);
+}
+
+if(experience){
+  conditions.push("users.experience >= ?");
+  params.push(Number(experience));
+}
+
+if(qualification){
+  conditions.push("users.qualification LIKE ?");
+  params.push(`%${qualification}%`);
+}
+
+if(conditions.length > 0){
+  query += " WHERE " + conditions.join(" AND ");
+}
+
+db.query(query, params,(err,result)=>{
+
+if(err){
+console.error(err);
+return res.status(500).json({message:"Database error"});
+}
+
+res.json(result);
+
+});
+
+});
+
+/* REGISTER USER */
+router.post('/',
+  upload.fields([
+    { name: 'profilePicture', maxCount: 1 },
+    { name: 'certificates', maxCount: 5 }
+  ]),
+  async (req, res) => {
+    try {
+      console.log('Registration attempt:', req.body);
+      const {
+        firstName, lastName, email, password, qualification, experience, bio,
+        phone, location, linkedin, github, portfolio, previousCompanies
+      } = req.body;
+
+      console.log('Extracted data:', { firstName, lastName, email, password: password ? '***' : null });
+
+      if (!firstName || !lastName || !email || !password) {
+        return res.status(400).json({
+          message: "First name, last name, email and password required"
+        });
+      }
+
+      // Check existing email
+      const existingUsers = await new Promise((resolve, reject) => {
+        db.query("SELECT * FROM users WHERE email = ?", [email], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+
+      if (existingUsers.length > 0) {
+        return res.status(400).json({
+          message: "Email already registered"
+        });
+      }
+
+      const id = Date.now();
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const verificationToken = crypto.randomBytes(32).toString('hex');
+
+      const profilePic = req.files?.profilePicture
+        ? `/uploads/${req.files.profilePicture[0].filename}`
+        : "";
+
+      const skills = req.body.skills ? JSON.parse(req.body.skills) : [];
+      const certificates = req.body.certificates ? JSON.parse(req.body.certificates) : [];
+
+      const fullName = firstName + " " + lastName;
+
+      const insertUserQuery = `INSERT INTO users
+      (id,firstName,lastName,fullName,email,password,bio,qualification,experience,profilePicture,phone,location,linkedin,github,portfolio,previousCompanies,isVerified,verificationToken)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+
+      await new Promise((resolve, reject) => {
+        db.query(insertUserQuery, [
+          id, firstName, lastName, fullName, email, hashedPassword, bio || "", qualification || "",
+          Number(experience) || 0, profilePic, phone || "", location || "", linkedin || "", github || "",
+          portfolio || "", previousCompanies || "", false, verificationToken
+        ], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // Insert skills
+      for (const skillObj of skills) {
+        const skillName = typeof skillObj === 'string' ? skillObj : skillObj.name;
+        const level = typeof skillObj === 'object' ? skillObj.level || 'Beginner' : 'Beginner';
+
+        await new Promise((resolve, reject) => {
+          db.query("INSERT INTO skills (userId,skillName,level) VALUES (?,?,?)",
+            [id, skillName, level], (err) => {
+              if (err) reject(err);
+              else resolve();
+            });
+        });
+      }
+
+      // Insert certificates
+      if (req.files?.certificates) {
+        for (let i = 0; i < req.files.certificates.length; i++) {
+          const file = req.files.certificates[i];
+          const certData = certificates[i] || {};
+
+          await new Promise((resolve, reject) => {
+            db.query("INSERT INTO certificates (userId,title,organization,description,year,imagePath) VALUES (?,?,?,?,?,?)",
+              [id, certData.title || '', certData.organization || '', certData.description || '', certData.year || 2024, `/uploads/${file.filename}`], (err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+          });
+        }
+      }
+
+      // Send verification email
+      const verificationUrl = `http://localhost:5000/api/auth/verify-email?token=${verificationToken}`;
+
+      await new Promise((resolve, reject) => {
+        const mailOptions = {
+          from: process.env.EMAIL_USER,
+          to: email,
+          subject: 'Verify Your Email - Peer Skill Exchange',
+          html: `
+            <h2>Welcome to Peer Skill Exchange!</h2>
+            <p>Please click the link below to verify your email address:</p>
+            <a href="${verificationUrl}">Verify Email</a>
+            <p>If the link doesn't work, copy and paste this URL: ${verificationUrl}</p>
+          `
+        };
+
+        transporter.sendMail(mailOptions, (error) => {
+          if (error) reject(error);
+          else resolve();
+        });
+      });
+
+      res.json({
+        message: "User registered successfully. Please check your email to verify your account."
+      });
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+/* LOGIN */
+
+router.post('/login', async (req,res)=>{
+
+const {email,password} = req.body;
+
+if(!email || !password){
+
+return res.status(400).json({
+message:"Email and password required"
+});
+
+}
+
+db.query(
+"SELECT * FROM users WHERE email=?",
+[email],
+async (err,result)=>{
+
+if(err) return res.status(500).json(err);
+
+if(result.length===0){
+
+return res.status(401).json({
+message:"Invalid email or password"
+});
+
+}
+
+const user = result[0];
+
+if (!user.isVerified) {
+  return res.status(401).json({
+    message: "Please verify your email before logging in"
+  });
+}
+
+// Check if password is hashed (bcrypt hashes start with $2b$ or $2a$)
+let isPasswordValid = false;
+let needsMigration = false;
+
+if (user.password && (user.password.startsWith('$2b$') || user.password.startsWith('$2a$'))) {
+  // Password is already hashed
+  isPasswordValid = await bcrypt.compare(password, user.password);
+} else if (user.password) {
+  // Plain text password - compare directly and mark for migration
+  if (password === user.password) {
+    isPasswordValid = true;
+    needsMigration = true;
+  }
+} else {
+  // No password stored
+  return res.status(401).json({
+    message:"Invalid email or password"
+  });
+}
+
+if(!isPasswordValid){
+
+return res.status(401).json({
+message:"Invalid email or password"
+});
+
+}
+
+// Migrate plain text password to hashed if needed
+if (needsMigration) {
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.query("UPDATE users SET password = ? WHERE id = ?", [hashedPassword, user.id], (updateErr) => {
+      if (updateErr) {
+        console.error('Password migration failed:', updateErr);
+        // Continue with login even if migration fails
+      }
+    });
+  } catch (hashErr) {
+    console.error('Password hashing failed during migration:', hashErr);
+    // Continue with login
+  }
+}
+
+// Set session
+req.login(user, (err) => {
+  if (err) return res.status(500).json({ message: 'Login failed' });
+  
+  res.json({
+    message:"Login successful",
+    user
+  });
+});
+
+});
+
+});
+
+/* GET USER PROFILE WITH SKILLS AND CERTIFICATES */
+
+router.get('/:id',(req,res)=>{
+
+const userId = req.params.id;
+
+db.query(
+"SELECT * FROM users WHERE id = ?",
+[userId],
+(err,userResult)=>{
+
+if(err) return res.status(500).json({message:"Database error"});
+
+if(userResult.length === 0){
+  return res.status(404).json({message:"User not found"});
+}
+
+const user = userResult[0];
+
+// Get skills
+db.query(
+"SELECT * FROM skills WHERE userId = ?",
+[userId],
+(err,skillsResult)=>{
+
+if(err) return res.status(500).json({message:"Database error"});
+
+// Get certificates
+db.query(
+"SELECT * FROM certificates WHERE userId = ?",
+[userId],
+(err,certsResult)=>{
+
+if(err) return res.status(500).json({message:"Database error"});
+
+res.json({
+  ...user,
+  skills: skillsResult,
+  certificates: certsResult
+});
+
+});
+
+});
+
+});
+
+});
+
+/* UPDATE USER PROFILE */
+router.put('/:id',
+  upload.fields([
+    { name: 'profilePicture', maxCount: 1 },
+    { name: 'certificates', maxCount: 5 }
+  ]),
+  async (req, res) => {
+    try {
+      const userId = req.params.id;
+
+      const {
+        firstName, lastName, email, qualification, experience, bio,
+        phone, location, linkedin, github, portfolio, previousCompanies
+      } = req.body;
+
+      const profilePic = req.files?.profilePicture
+        ? `/uploads/${req.files.profilePicture[0].filename}`
+        : req.body.profilePicture;
+
+      const fullName = firstName + " " + lastName;
+
+      const updateUserQuery = `UPDATE users SET
+      firstName=?, lastName=?, fullName=?, email=?, bio=?, qualification=?, experience=?, profilePicture=?, phone=?, location=?, linkedin=?, github=?, portfolio=?, previousCompanies=?
+      WHERE id=?`;
+
+      await new Promise((resolve, reject) => {
+        db.query(updateUserQuery, [
+          firstName, lastName, fullName, email, bio || "", qualification || "", Number(experience) || 0,
+          profilePic, phone || "", location || "", linkedin || "", github || "", portfolio || "", previousCompanies || "", userId
+        ], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      });
+
+      // Update skills if provided
+      if (req.body.skills) {
+        const skills = JSON.parse(req.body.skills);
+
+        // Delete existing skills
+        await new Promise((resolve, reject) => {
+          db.query("DELETE FROM skills WHERE userId = ?", [userId], (err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        // Insert new skills
+        for (const skillObj of skills) {
+          const skillName = typeof skillObj === 'string' ? skillObj : skillObj.name;
+          const level = typeof skillObj === 'object' ? skillObj.level || 'Beginner' : 'Beginner';
+
+          await new Promise((resolve, reject) => {
+            db.query("INSERT INTO skills (userId,skillName,level) VALUES (?,?,?)",
+              [userId, skillName, level], (err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+          });
+        }
+      }
+
+      // Update certificates if provided
+      if (req.body.certificates) {
+        const certificates = JSON.parse(req.body.certificates);
+
+        // Handle new certificate uploads
+        if (req.files?.certificates) {
+          for (let i = 0; i < req.files.certificates.length; i++) {
+            const file = req.files.certificates[i];
+            const certData = certificates[i] || {};
+
+            await new Promise((resolve, reject) => {
+              db.query("INSERT INTO certificates (userId,title,organization,description,year,imagePath) VALUES (?,?,?,?,?,?)",
+                [userId, certData.title || '', certData.organization || '', certData.description || '', certData.year || 2024, `/uploads/${file.filename}`], (err) => {
+                  if (err) reject(err);
+                  else resolve();
+                });
+            });
+          }
+        }
+      }
+
+      res.json({
+        message: "Profile updated successfully"
+      });
+
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Server error" });
+    }
+  });
+
+/* CREATE EXCHANGE REQUEST */
+
+router.post('/exchange-request',(req,res)=>{
+
+const {fromEmail,toEmail,skill} = req.body;
+
+if(!fromEmail || !toEmail || !skill){
+
+return res.status(400).json({
+message:"Missing fields"
+});
+
+}
+
+if(fromEmail === toEmail){
+
+return res.status(400).json({
+message:"Cannot send request to yourself"
+});
+
+}
+
+// Check if request already exists
+db.query(
+"SELECT * FROM exchange_requests WHERE fromEmail=? AND toEmail=? AND skill=?",
+[fromEmail,toEmail,skill],
+(err,existing)=>{
+
+if(err) return res.status(500).json(err);
+
+if(existing.length > 0){
+
+return res.status(400).json({
+message:"Request already sent"
+});
+
+}
+
+const id = Date.now();
+
+db.query(
+`INSERT INTO exchange_requests
+(id,fromEmail,toEmail,skill,status,createdAt)
+VALUES (?,?,?,?,?,NOW())`,
+[id,fromEmail,toEmail,skill,"pending"],
+(err)=>{
+
+if(err) return res.status(500).json(err);
+
+res.json({message:"Request sent"});
+
+});
+
+});
+
+});
+
+/* GET REQUESTS */
+
+router.get('/exchange-request/:email',(req,res)=>{
+
+db.query(
+"SELECT * FROM exchange_requests WHERE toEmail=?",
+[req.params.email],
+(err,result)=>{
+
+if(err) return res.status(500).json(err);
+
+res.json(result);
+
+});
+
+});
+
+/* GET SENT REQUESTS */
+
+router.get('/exchange-request-sent/:email',(req,res)=>{
+
+db.query(
+"SELECT er.*, u.fullName, u.email as toEmail FROM exchange_requests er JOIN users u ON er.toEmail = u.email WHERE er.fromEmail=? ORDER BY er.createdAt DESC",
+[req.params.email],
+(err,result)=>{
+
+if(err) return res.status(500).json(err);
+
+res.json(result);
+
+});
+
+});
+
+/* ACCEPT REQUEST */
+
+router.put('/exchange-request/:id/accept',(req,res)=>{
+
+db.query(
+"UPDATE exchange_requests SET status='accepted' WHERE id=?",
+[req.params.id],
+(err)=>{
+
+if(err) return res.status(500).json(err);
+
+res.json({message:"Request accepted"});
+
+});
+
+});
+
+/* REJECT REQUEST */
+
+router.put('/exchange-request/:id/reject',(req,res)=>{
+
+db.query(
+"UPDATE exchange_requests SET status='rejected' WHERE id=?",
+[req.params.id],
+(err)=>{
+
+if(err) return res.status(500).json(err);
+
+res.json({message:"Request rejected"});
+
+});
+
+});
+
+/* GET SENT REQUESTS */
+
+router.get('/exchange-request-sent/:email',(req,res)=>{
+
+db.query(
+"SELECT er.*, u.fullName, u.email as toEmail FROM exchange_requests er JOIN users u ON er.toEmail = u.email WHERE er.fromEmail=? ORDER BY er.createdAt DESC",
+[req.params.email],
+(err,result)=>{
+
+if(err) return res.status(500).json(err);
+
+res.json(result);
+
+});
+
+});
+
+module.exports = router;

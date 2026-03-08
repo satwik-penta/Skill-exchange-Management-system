@@ -1,0 +1,76 @@
+{
+  "users": [
+    {
+      "id": 1772762438477,
+      "firstName": "Satwik",
+      "lastName": "Penta",
+      "fullName": "Satwik Penta",
+      "email": "satwikpenta53@gmail.com",
+      "bio": "Student",
+      "qualification": "10+2",
+      "experience": 6,
+      "skills": [
+        "Python",
+        "Java"
+      ],
+      "profilePicture": "/uploads/profilePicture-1772762438470-633624999.png",
+      "certificates": [
+        "/uploads/certificates-1772762438473-318258498.png"
+      ]
+    },
+    {
+      "id": 1772783751257,
+      "firstName": "Satwik",
+      "lastName": "Penta",
+      "fullName": "Satwik Penta",
+      "email": "satwikpenta53@gmail.com",
+      "password": "Satwik@8977",
+      "bio": "Hello",
+      "qualification": "B.Tech",
+      "experience": 5,
+      "skills": [
+        "Java"
+      ],
+      "profilePicture": "/uploads/profilePicture-1772783751251-884228915.png",
+      "certificates": [
+        "/uploads/certificates-1772783751254-126956989.png"
+      ]
+    },
+    {
+      "id": 1772792661661,
+      "firstName": "BHASKAR",
+      "lastName": "KUMAR",
+      "fullName": "BHASKAR KUMAR",
+      "email": "bhaskar93906@gmail.com",
+      "password": "$2b$10$Eert3YQ4zXuRE8UAoHjxb.dR5Dldt1H9JILYGuhG7HtSGCKDpYQrW",
+      "bio": "lol",
+      "qualification": "B.Tech",
+      "experience": 15,
+      "skills": [
+        "Java",
+        "C++"
+      ],
+      "profilePicture": "/uploads/profilePicture-1772792661657-506763476.jpg",
+      "certificates": [
+        "/uploads/certificates-1772792661659-879495892.jpg"
+      ]
+    },
+    {
+      "id": 1772867548307,
+      "firstName": "sai",
+      "lastName": "chaitu",
+      "fullName": "sai chaitu",
+      "email": "techysatwik27@gmail.com",
+      "password": "$2b$10$KqMIudOcLKvJ1qMvnNqazutEO.HsSh2imICbfir4TBlNhK1/gItBO",
+      "bio": "HI",
+      "qualification": "B.Tech",
+      "experience": 3,
+      "skills": [],
+      "profilePicture": "/uploads/profilePicture-1772867548299-635723184.png",
+      "certificates": [
+        "/uploads/certificates-1772867548303-25304150.png"
+      ]
+    }
+  ],
+  "exchangeRequests": []
+}

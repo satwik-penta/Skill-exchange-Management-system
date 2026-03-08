@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>My Profile</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+*{
+box-sizing:border-box;
+font-family:'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body{
+margin:0;
+background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+min-height:100vh;
+position:relative;
+overflow-x:hidden;
+overflow-y:auto;
+}
+
+body::before{
+content:'';
+position:absolute;
+top:0;
+left:0;
+right:0;
+bottom:0;
+background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="80" r="1" fill="rgba(255,255,255,0.1)"/><circle cx="50" cy="50" r="1.5" fill="rgba(255,255,255,0.1)"/></svg>');
+background-size:200px 200px;
+animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float{
+0%,100%{transform:translateY(0px);}
+50%{transform:translateY(-10px);}
+}
+
+header{
+background: rgba(255,255,255,0.95);
+backdrop-filter: blur(20px);
+padding:20px;
+box-shadow:0 8px 32px rgba(0,0,0,0.1);
+display:flex;
+justify-content:space-between;
+align-items:center;
+border-bottom:1px solid rgba(255,255,255,0.2);
+position:relative;
+z-index:10;
+}
+
+h1{
+color:#1e3a8a;
+background: linear-gradient(45deg, #1e3a8a, #3b82f6);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+background-clip: text;
+font-weight:700;
+margin:0;
+}
+
+.container{
+max-width:900px;
+margin:40px auto;
+padding:20px;
+position:relative;
+z-index:5;
+}
+
+.profile-card{
+background: rgba(255,255,255,0.95);
+backdrop-filter: blur(20px);
+padding:40px;
+border-radius:20px;
+box-shadow:0 20px 60px rgba(0,0,0,0.15);
+text-align:center;
+border:1px solid rgba(255,255,255,0.2);
+transition: all 0.3s ease;
+position:relative;
+overflow:hidden;
+}
+
+.profile-card::before{
+content:'';
+position:absolute;
+top:-50%;
+left:-50%;
+width:200%;
+height:200%;
+background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+transform: rotate(45deg);
+transition: all 0.6s ease;
+}
+
+.profile-card:hover::before{
+animation: shine 1.5s ease-in-out;
+}
+
+@keyframes shine{
+0%{transform: translateX(-100%) translateY(-100%) rotate(45deg);}
+100%{transform: translateX(100%) translateY(100%) rotate(45deg);}
+}
+
+.profile-img{
+width:140px;
+height:140px;
+border-radius:50%;
+object-fit:cover;
+margin-bottom:20px;
+border:5px solid #3b82f6;
+box-shadow:0 10px 30px rgba(59,130,246,0.3);
+transition: all 0.3s ease;
+position:relative;
+z-index:2;
+}
+
+.profile-img:hover{
+transform: scale(1.05);
+box-shadow:0 15px 40px rgba(59,130,246,0.4);
+}
+
+h2{
+color:#1e3a8a;
+margin:10px 0;
+font-size:28px;
+font-weight:600;
+}
+
+.profile-header{
+text-align:center;
+margin-bottom:40px;
+padding:30px;
+background: rgba(59,130,246,0.05);
+border-radius:15px;
+border:1px solid rgba(59,130,246,0.1);
+}
+
+.profile-bio{
+color:#666;
+font-size:18px;
+margin:15px 0;
+font-style:italic;
+}
+
+.experience-highlight{
+display:inline-block;
+background: linear-gradient(45deg, #10b981, #059669);
+color:white;
+padding:10px 20px;
+border-radius:25px;
+font-size:16px;
+font-weight:600;
+margin-top:15px;
+box-shadow:0 4px 15px rgba(16,185,129,0.3);
+}
+
+.profile-details{
+display:grid;
+gap:30px;
+}
+
+.detail-section{
+background: rgba(255,255,255,0.9);
+padding:25px;
+border-radius:15px;
+border:1px solid rgba(255,255,255,0.3);
+}
+
+.detail-section h3{
+color:#1e3a8a;
+font-size:20px;
+margin-bottom:20px;
+font-weight:600;
+}
+
+.info-grid{
+display:grid;
+grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+gap:15px;
+}
+
+.skills-container, .certs-container{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+align-items:center;
+}
+
+.cert-link{
+display:inline-block;
+transition: transform 0.3s ease;
+}
+
+.cert-link:hover{
+transform: scale(1.05);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+.profile-card{
+padding:20px;
+}
+
+.profile-img{
+width:100px;
+height:100px;
+}
+
+.profile-header{
+padding:20px;
+}
+
+.detail-section{
+padding:20px;
+}
+
+.info-grid{
+grid-template-columns: 1fr;
+}
+
+.skills-container, .certs-container{
+justify-content:center;
+}
+
+.cert-img{
+width:80px;
+height:60px;
+}
+}
+
+@media (max-width: 480px) {
+.container{
+padding:10px;
+margin:20px auto;
+}
+
+.profile-card{
+padding:15px;
+}
+
+.profile-img{
+width:80px;
+height:80px;
+}
+
+h2{
+font-size:24px;
+}
+
+.experience-highlight{
+font-size:14px;
+padding:8px 16px;
+}
+}
+transition: all 0.3s ease;
+box-shadow:0 5px 15px rgba(0,0,0,0.1);
+border:2px solid rgba(255,255,255,0.8);
+}
+
+.cert-img:hover{
+transform: scale(1.1) rotate(2deg);
+box-shadow:0 8px 25px rgba(0,0,0,0.2);
+}
+
+button{
+padding:14px 28px;
+background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+border:none;
+color:white;
+border-radius:12px;
+cursor:pointer;
+margin-top:20px;
+transition: all 0.3s ease;
+font-size:16px;
+font-weight:600;
+box-shadow:0 6px 20px rgba(59,130,246,0.3);
+position:relative;
+overflow:hidden;
+}
+
+button::before{
+content:'';
+position:absolute;
+top:0;
+left:-100%;
+width:100%;
+height:100%;
+background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+transition: left 0.5s;
+}
+
+button:hover::before{
+left:100%;
+}
+
+button:hover{
+background: linear-gradient(45deg, #1d4ed8, #1e40af);
+transform:translateY(-3px);
+box-shadow:0 10px 30px rgba(59,130,246,0.4);
+}
+
+.experience-highlight{
+background: linear-gradient(45deg, #10b981, #059669);
+color:white;
+padding:15px 25px;
+border-radius:15px;
+display:inline-block;
+margin:20px 0;
+font-size:18px;
+font-weight:600;
+box-shadow:0 6px 20px rgba(16,185,129,0.3);
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<h1>My Profile</h1>
+
+<button onclick="goDashboard()">Dashboard</button>
+
+</header>
+
+<div class="container">
+
+<div class="profile-card" id="profile"></div>
+
+</div>
+
+<script>
+
+const API="http://localhost:5000/api/users";
+
+async function loadProfile(){
+
+const email = localStorage.getItem("userEmail");
+
+if(!email){
+window.location="index.html";
+return;
+}
+
+try{
+
+// First get user ID from email
+const searchRes = await fetch(`${API}?skill=`);
+const users = await searchRes.json();
+const user = users.find(u => u.email === email);
+
+if(!user){
+document.getElementById("profile").innerHTML = "<p>No profile found</p>";
+return;
+}
+
+// Get detailed profile with skills and certificates
+const profileRes = await fetch(`${API}/${user.id}`);
+const profileData = await profileRes.json();
+
+document.getElementById("profile").innerHTML = `
+
+<div class="profile-header">
+<img src="${profileData.profilePicture || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="profile-img" alt="Profile Picture">
+
+<h2>${profileData.fullName || (profileData.firstName + " " + profileData.lastName)}</h2>
+
+<p class="profile-bio">${profileData.bio || ""}</p>
+
+<div class="experience-highlight">
+<i class="fas fa-briefcase"></i> ${profileData.experience || 0} Years of Experience
+</div>
+</div>
+
+<div class="profile-details">
+<div class="detail-section">
+<h3><i class="fas fa-user"></i> Personal Information</h3>
+<div class="info-grid">
+<div class="info-item">
+<b><i class="fas fa-envelope"></i> Email:</b> ${profileData.email}
+</div>
+${profileData.phone ? `<div class="info-item"><b><i class="fas fa-phone"></i> Phone:</b> ${profileData.phone}</div>` : ''}
+${profileData.linkedin ? `<div class="info-item"><b><i class="fab fa-linkedin"></i> LinkedIn:</b> <a href="${profileData.linkedin}" target="_blank">${profileData.linkedin}</a></div>` : ''}
+${profileData.github ? `<div class="info-item"><b><i class="fab fa-github"></i> GitHub:</b> <a href="${profileData.github}" target="_blank">${profileData.github}</a></div>` : ''}
+${profileData.portfolio ? `<div class="info-item"><b><i class="fas fa-globe"></i> Portfolio:</b> <a href="${profileData.portfolio}" target="_blank">${profileData.portfolio}</a></div>` : ''}
+<div class="info-item">
+<b><i class="fas fa-graduation-cap"></i> Qualification:</b> ${profileData.qualification || "Not specified"}
+</div>
+${profileData.previousCompanies ? `<div class="info-item"><b><i class="fas fa-building"></i> Previous Companies:</b> ${profileData.previousCompanies.replace(/\n/g, ', ')}</div>` : ''}
+<div class="info-item">
+<b><i class="fas fa-calendar"></i> Member Since:</b> ${new Date(profileData.id).toLocaleDateString()}
+</div>
+</div>
+</div>
+
+<div class="skill-section">
+<h3><i class="fas fa-tools"></i> Skills</h3>
+<div class="skills-container">
+${(profileData.skills || []).length > 0 ? profileData.skills.map(s => `<span class="skill-tag">${s.skillName} (${s.level})</span>`).join("") : "<p style='color:#999; font-style:italic;'>No skills added yet</p>"}
+</div>
+</div>
+
+<div class="cert-section">
+<h3><i class="fas fa-certificate"></i> Certificates</h3>
+<div class="certs-container">
+${(profileData.certificates || []).length > 0 ? profileData.certificates.map(c => `
+<div class="cert-item" style="margin: 10px; text-align: center;">
+<a href="${c.imagePath}" target="_blank" class="cert-link">
+<img src="${c.imagePath}" class="cert-img" alt="${c.title}" style="width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #ddd;">
+</a>
+<div style="margin-top: 5px; font-size: 12px; color: #666;">
+<strong>${c.title}</strong><br>
+${c.organization} (${c.year})
+</div>
+</div>
+`).join("") : "<p style='color:#999; font-style:italic;'>No certificates uploaded yet</p>"}
+</div>
+</div>
+</div>
+
+`;
+
+}catch(err){
+
+console.error(err);
+document.getElementById("profile").innerHTML = "<p>Failed to load profile</p>";
+
+}
+
+}
+
+function goDashboard(){
+window.location="dashboard.html";
+}
+
+loadProfile();
+
+</script>
+
+</body>
+</html>
